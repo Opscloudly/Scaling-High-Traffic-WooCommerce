@@ -3,4 +3,4 @@
 - [ ] prepare DR 
 - [ ] ha and troubleshoot 
 - [ ] automate high trafficusing some script 
-- [ ] release code for aws ,azure and gcp
+- [ ] release code for AWS and Digital Ocean
