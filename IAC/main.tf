@@ -9,104 +9,19 @@ terraform {
 
 provider "docker" {}
 
-# Define the network
-resource "docker_network" "wordpress_network" {
-  name = "wordpress_network"
+module "mysql" {
+  source = "./mysql"
 }
 
-# MySQL Image
-resource "docker_image" "mysql" {
-  name = "mysql:5.7"
+module "wordpress" {
+  source                = "./wordpress"
+  mysql_container_name  = module.mysql.container_name
+  wordpress_network     = module.mysql.wordpress_network
 }
 
-# WordPress Image
-resource "docker_image" "wordpress" {
-  name = "wordpress:latest"
-}
-
-# Nginx Image
-resource "docker_image" "nginx" {
-  name = "nginx:latest"
-}
-
-# MySQL Container
-resource "docker_container" "mysql" {
-  image = docker_image.mysql.name
-  name  = "mysql-container"
-
-  env = [
-    "MYSQL_ROOT_PASSWORD=rootpassword",
-    "MYSQL_DATABASE=wordpress",
-    "MYSQL_USER=wordpress",
-    "MYSQL_PASSWORD=wordpresspassword"
-  ]
-
-  ports {
-    internal = 3306
-    external = 3306
-  }
-
-  networks_advanced {
-    name    = docker_network.wordpress_network.name
-    aliases = ["mysql-container"]
-  }
-
-  healthcheck {
-    test        = ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-    interval    = "10s"
-    retries     = 5
-    start_period = "30s"
-    timeout     = "10s"
-  }
-}
-
-# WordPress Container
-resource "docker_container" "wordpress" {
-  image = docker_image.wordpress.name
-  name  = "wordpress-container"
-
-  env = [
-    "WORDPRESS_DB_HOST=mysql-container:3306",
-    "WORDPRESS_DB_NAME=wordpress",
-    "WORDPRESS_DB_USER=wordpress",
-    "WORDPRESS_DB_PASSWORD=wordpresspassword"
-  ]
-
-  ports {
-    internal = 80
-    external = 8080
-  }
-
-  depends_on = [docker_container.mysql]
-
-  networks_advanced {
-    name    = docker_network.wordpress_network.name
-    aliases = ["wordpress-container"]
-  }
-}
-
-# Nginx Container
-resource "docker_container" "nginx" {
-  image = docker_image.nginx.name
-  name  = "nginx-container"
-
-  ports {
-    internal = 80
-    external = 80
-  }
-
-  mounts {
-    source    = "${abspath(path.module)}/nginx.conf"
-    target    = "/etc/nginx/conf.d/default.conf"
-    type      = "bind"
-    read_only = true
-  }
-
-  networks_advanced {
-    name    = docker_network.wordpress_network.name
-    aliases = ["nginx-container"]
-  }
-
-  depends_on = [docker_container.wordpress]
+module "nginx" {
+  source          = "./nginx"
+  wordpress_url   = module.wordpress.container_url
+  wordpress_network = module.mysql.wordpress_network
 }
 
