@@ -24,6 +24,11 @@ resource "docker_image" "wordpress" {
   name = "wordpress:latest"
 }
 
+# Nginx Image
+resource "docker_image" "nginx" {
+  name = "nginx:latest"
+}
+
 # MySQL Container
 resource "docker_container" "mysql" {
   image = docker_image.mysql.name
@@ -79,3 +84,29 @@ resource "docker_container" "wordpress" {
     aliases = ["wordpress-container"]
   }
 }
+
+# Nginx Container
+resource "docker_container" "nginx" {
+  image = docker_image.nginx.name
+  name  = "nginx-container"
+
+  ports {
+    internal = 80
+    external = 80
+  }
+
+  mounts {
+    source    = "${abspath(path.module)}/nginx.conf"
+    target    = "/etc/nginx/conf.d/default.conf"
+    type      = "bind"
+    read_only = true
+  }
+
+  networks_advanced {
+    name    = docker_network.wordpress_network.name
+    aliases = ["nginx-container"]
+  }
+
+  depends_on = [docker_container.wordpress]
+}
+
